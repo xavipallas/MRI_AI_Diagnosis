@@ -7,12 +7,6 @@ __pycache__/
 *.ipynb_checkpoints/
 .pytest_cache/
 
-# Datos
-data/raw_dicom_example/
-data/registered_nifti_example/
-data/processed_segmentation_masks/
-data/transform_summary.json
-
 # Archivos temporales de Streamlit
 .streamlit/
 

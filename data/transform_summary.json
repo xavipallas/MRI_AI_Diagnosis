@@ -1,0 +1,42 @@
+{
+  "I9422": {
+    "condition": "Alzheimer",
+    "transform_file": "I9422.tfm",
+    "registered_nifti": "I9422_registered.nii.gz"
+  },
+  "I9660": {
+    "condition": "Alzheimer",
+    "transform_file": "I9660.tfm",
+    "registered_nifti": "I9660_registered.nii.gz"
+  },
+  "I9792": {
+    "condition": "Alzheimer",
+    "transform_file": "I9792.tfm",
+    "registered_nifti": "I9792_registered.nii.gz"
+  },
+  "I223768": {
+    "condition": "Parkinson",
+    "transform_file": "I223768.tfm",
+    "registered_nifti": "I223768_registered.nii.gz"
+  },
+  "I223772": {
+    "condition": "Parkinson",
+    "transform_file": "I223772.tfm",
+    "registered_nifti": "I223772_registered.nii.gz"
+  },
+  "I223783": {
+    "condition": "Parkinson",
+    "transform_file": "I223783.tfm",
+    "registered_nifti": "I223783_registered.nii.gz"
+  },
+  "I223785": {
+    "condition": "Control",
+    "transform_file": "I223785.tfm",
+    "registered_nifti": "I223785_registered.nii.gz"
+  },
+  "I224531": {
+    "condition": "Control",
+    "transform_file": "I224531.tfm",
+    "registered_nifti": "I224531_registered.nii.gz"
+  }
+}
