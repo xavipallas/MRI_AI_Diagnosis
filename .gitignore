@@ -1,0 +1,24 @@
+# Entorno virtual
+venv/
+
+# Archivos de Python generados
+__pycache__/
+*.pyc
+*.ipynb_checkpoints/
+.pytest_cache/
+
+# Datos
+data/raw_dicom_example/       # Ignorar si es grande, si no, puedes quitar esta línea
+data/registered_nifti_example/
+data/processed_segmentation_masks/
+data/transform_summary.json
+
+# Archivos temporales de Streamlit
+.streamlit/
+
+# Archivos específicos de OS
+.DS_Store
+Thumbs.db
+
+# Archivos de log
+*.log
