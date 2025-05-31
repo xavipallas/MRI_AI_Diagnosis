@@ -1,22 +1,39 @@
-MRI_AI_Diagnosis: Sistema de soporte al diagnóstico de trastrornos neurológicos mediante MRI
-🚀 Visión General del Proyecto
-MRI_AI_Diagnosis es un sistema integral diseñado para asistir en el diagnóstico de trastornos neurológicos (Alzheimer y Parkinson) a partir de imágenes de Resonancia Magnética (MRI). El proyecto utiliza una combinación de segmentación de imágenes médicas con redes neuronales UNet y clasificación basada en características con XGBoost, todo orquestado a través de una interfaz gráfica de usuario (GUI) interactiva con Streamlit.
+# MRI_AI_Diagnosis: Sistema de soporte al diagnóstico de trastornos neurológicos mediante MRI
 
-Características Principales:
-Preprocesamiento de MRI: Conversión de DICOM a NIfTI, registro y normalización de imágenes cerebrales.
-Segmentación Multitarea: Un modelo UNet 3D entrenado para segmentar simultáneamente regiones clave del cerebro (hipocampos y putámenes) en las MRIs.
-Extracción de Características Cuantitativas: Cálculo automático de volúmenes, características de forma y textura a partir de las regiones segmentadas.
-Clasificación Avanzada: Un clasificador XGBoost entrenado con las características extraídas para predecir la condición del paciente (Alzheimer, Parkinson, Control).
-Interfaz de Usuario Intuitiva: Una aplicación Streamlit que permite cargar imágenes MRI, realizar la segmentación y clasificación, y visualizar los resultados de manera interactiva.
-🛠️ Estructura del Proyecto
+![Diagnóstico IA MRI](https://img.shields.io/badge/Estado-Finalizado-green)
+![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue)
+![Licencia](https://img.shields.io/github/license/xavipallas/MRI_AI_Diagnosis)
+![Dependencias](https://img.shields.io/badge/Dependencias-Pipfile-green)
+
+---
+
+## 🚀 Visión general del proyecto
+
+`MRI_AI_Diagnosis` es un sistema integral diseñado para asistir en el diagnóstico de trastornos neurológicos (Alzheimer y Parkinson) a partir de imágenes de Resonancia Magnética (MRI). El proyecto utiliza una combinación de **segmentación de imágenes médicas con redes neuronales UNet** y **clasificación basada en características con XGBoost**, todo orquestado a través de una **interfaz gráfica de usuario (GUI) interactiva con Streamlit**.
+
+### Características principales:
+
+* **Preprocesamiento de MRI:** Conversión de DICOM a NIfTI, registro y normalización de imágenes cerebrales.
+* **Segmentación multitarea:** Un modelo UNet 3D entrenado para segmentar simultáneamente regiones clave del cerebro (hipocampos y putámenes) en las MRIs.
+* **Extracción de características cuantitativas:** Cálculo automático de volúmenes, características de forma y textura a partir de las regiones segmentadas.
+* **Clasificación avanzada:** Un clasificador XGBoost entrenado con las características extraídas para predecir la condición del paciente (Alzheimer, Parkinson, Control).
+* **Interfaz de usuario intuitiva:** Una aplicación Streamlit que permite cargar imágenes MRI, realizar la segmentación y clasificación, y visualizar los resultados de manera interactiva.
+
+---
+
+## 🛠️ Estructura del proyecto
+
 El repositorio está organizado de forma modular para facilitar la navegación, el desarrollo y el mantenimiento:
 
+```
 MRI_AI_Diagnosis/
 ├── .github/                      # Configuraciones de GitHub (ej. workflows de CI/CD)
 ├── data/                         # Almacena datos de ejemplo y plantillas
-│   ├── raw_dicom_example/        # Ejemplos de datos DICOM crudos
+│   ├── raw_dicom_example/        # Ejemplos de MRIs en series DICOM
 │   ├── registered_nifti_example/ # Ejemplos de MRIs registradas (salida del preprocesamiento)
-│   └── segmentation_masks_template/ # Máscaras de plantilla MNI y la plantilla de referencia
+│   ├── segmentation_masks_template/ # Máscaras de plantilla MNI y la plantilla de referencia
+│   ├── processed_segmentation_masks/ # Máscaras de segmentación de MRIs
+│   └── transform_summary.json    # Relación de transformación y condición de las MRIs registradas
 ├── models/                       # Modelos entrenados
 │   ├── unet_multitask.pth        # Modelo UNet de segmentación
 │   └── xgboost_classifier.joblib # Clasificador XGBoost
@@ -26,7 +43,7 @@ MRI_AI_Diagnosis/
 │   ├── data_processing/          # Scripts para preprocesamiento y carga de datos
 │   │   ├── dicom_to_nifti.py     # Conversión de DICOM a NIfTI y registro rígido
 │   │   ├── ants_registration.py  # Registro de máscaras ANTs
-│   │   └── data_loader.py        # Clases `Dataset` y funciones de carga de datos
+│   │   └── data_loader.py        # Clases Dataset y funciones de carga de datos
 │   ├── segmentation/             # Módulos relacionados con la segmentación UNet
 │   │   ├── unet_architecture.py  # Definición de la arquitectura UNet
 │   │   ├── unet_trainer.py       # Lógica de entrenamiento del UNet
@@ -43,91 +60,95 @@ MRI_AI_Diagnosis/
 ├── LICENSE                       # Información de licencia
 ├── README.md                     # Este archivo
 └── requirements.txt              # Dependencias del proyecto
-⚙️ Instalación
+```
+
+---
+
+## ⚙️ Instalación
+
 Sigue estos pasos para configurar el entorno y ejecutar el proyecto localmente.
 
-1. Clona el Repositorio
-Bash
+### 1. Clona el repositorio
 
-git clone https://github.com/xavipallas/MRI_AI_Diagnosis.git
+```
+git clone [https://github.com/xavipallas/MRI_AI_Diagnosis.git](https://github.com/xavipallas/MRI_AI_Diagnosis.git)
 cd MRI_AI_Diagnosis
-2. Crea y Activa el Entorno Virtual
-Es altamente recomendable usar un entorno virtual para gestionar las dependencias del proyecto.
+```
 
-Bash
+### 2. Crea y activa el entorno virtual
 
+```
 python -m venv venv
-En Windows:
-PowerShell
+```
 
-.\venv\Scripts\activate
-(Si tienes problemas con la política de ejecución de PowerShell, puedes necesitar ejecutar Set-ExecutionPolicy RemoteSigned como administrador una vez).
-En macOS/Linux:
-Bash
+* **En Windows:**
 
-source venv/bin/activate
-3. Instala las Dependencias
+  ```
+  .\venv\Scripts\activate
+  ```
+  (Si tienes problemas con la política de ejecución de PowerShell, puedes necesitar ejecutar Set-ExecutionPolicy          RemoteSigned como administrador una vez).
+  
+* **En macOS/Linux:**
+  ```
+  source venv/bin/activate
+  ```
+
+### 3. Instala las dependencias
 Con tu entorno virtual activado, instala todas las librerías necesarias:
-
-Bash
-
+```
 pip install -r requirements.txt
-🚀 Uso
+```
+
+---
+
+## 🚀 Uso
 El proyecto puede usarse de varias maneras: a través de su GUI interactiva, o ejecutando scripts individuales para cada etapa del pipeline.
 
-1. Ejecutar la Interfaz Gráfica de Usuario (GUI)
+### 1. Ejecutar la Interfaz Gráfica de Usuario (GUI)
 La forma más sencilla de interactuar con el sistema es a través de la aplicación Streamlit.
 
-Bash
-
+```
 streamlit run src/gui/app.py
+```
 Esto abrirá la aplicación en tu navegador web, donde podrás cargar tus archivos MRI y obtener resultados.
 
-2. Ejecutar Scripts Individuales (Modo Desarrollo/Prueba)
+### 2. Ejecutar Scripts individuales (Modo Desarrollo/Prueba)
 Si deseas ejecutar etapas específicas del pipeline o realizar un entrenamiento completo, puedes llamar directamente a los scripts. Asegúrate de estar en la raíz del proyecto (MRI_AI_Diagnosis) y con tu entorno virtual activado.
 
-Ejemplo de Preprocesamiento DICOM a NIfTI:
+* **Ejemplo de Preprocesamiento DICOM a NIfTI:**
+    ```
+    python src/data_processing/dicom_to_nifti.py
+    ```
+    (Asegúrate de ajustar las rutas de entrada/salida dentro del if __name__ == "__main__": del script o pasarlas como argumentos si el script lo soporta).
 
-Bash
+* **Ejemplo de Registro de máscaras (ANTs):**
+    ```
+    python src/data_processing/ants_registration.py
+    ```
+* **Ejemplo de Entrenamiento del UNet:**
+    ```
+    python src/segmentation/unet_trainer.py
+    ```
+    (Este script espera que tus datos estén preparados en las rutas definidas en src/config.py y que la carga de datos funcione).
 
-python src/data_processing/dicom_to_nifti.py
-(Asegúrate de ajustar las rutas de entrada/salida dentro del if __name__ == "__main__": del script o pasarlas como argumentos si el script lo soporta).
-
-Ejemplo de Registro de Máscaras (ANTs):
-
-Bash
-
-python src/data_processing/ants_registration.py
-Ejemplo de Entrenamiento del UNet:
-
-Bash
-
-python src/segmentation/unet_trainer.py
-(Este script espera que tus datos estén preparados en las rutas definidas en src/config.py y que la carga de datos funcione).
-
-Ejemplo de Extracción de Características y Clasificación (Pipeline Completo):
-El script principal que orquesta todo el flujo de entrenamiento (Unet + XGBoost) es el original Unet_multitask v4.2.2.py, ahora dividido en src/. Para ejecutar el pipeline completo de entrenamiento y evaluación tal como estaba en el script original (asumiendo que está actualizado para usar los nuevos módulos), deberías tener un main.py o un script similar que coordine las llamadas. Si no, tendrías que ejecutar las partes secuencialmente.
-
-Nota: Para ejecutar el flujo completo como se describía en el script original, deberías crear un nuevo archivo main.py en la raíz del proyecto o en src/ que importe y llame a las funciones de tus módulos refactorizados en el orden correcto.
-
-Python
-
-# Ejemplo de un posible src/main_pipeline.py
-from src.data_processing.data_loader import load_all_data, MultitaskSegmentationDataset, FeatureExtractionDataset, IMAGE_TRANSFORMS
-from src.segmentation.unet_architecture import build_unet_multitask
-from src.segmentation.unet_trainer import train_unet
-from src.segmentation.unet_inference import load_unet_model # Para cargar el UNet entrenado
-from src.classification.feature_extraction import extract_features
-from src.classification.classifier_model import train_and_evaluate_xgboost, load_xgboost_classifier
-from src.config import DATA_DIR, MASKS_DIR, REGIONS, DEVICE, UNET_MODEL_PATH, XGB_CLASSIFIER_PATH
-
-from sklearn.model_selection import train_test_split
-from torch.utils.data import DataLoader
-from sklearn.metrics import classification_report
-
-def run_full_pipeline():
-    print("Cargando todos los datos...")
-    full_data = load_all_data(DATA_DIR, MASKS_DIR)
+* **Ejemplo de Extracción de características y clasificación (Pipeline Completo):**
+    Para ejecutar el pipeline completo de entrenamiento y evaluación tal como se describe en el script original (asumiendo que está actualizado para usar los nuevos módulos), puedes usar el siguiente script `src/main_pipeline.py`.
+    ```Python
+    # src/main_pipeline.py
+    from src.data_processing.data_loader import load_all_data, MultitaskSegmentationDataset, FeatureExtractionDataset, IMAGE_TRANSFORMS
+    from src.segmentation.unet_architecture import build_unet_multitask
+    from src.segmentation.unet_trainer import train_unet
+    from src.segmentation.unet_inference import load_unet_model
+    from src.classification.feature_extraction import extract_features
+    from src.classification.classifier_model import train_and_evaluate_xgboost, load_xgboost_classifier
+    from src.config import DATA_DIR, MASKS_DIR, REGIONS, DEVICE, UNET_MODEL_PATH, XGB_CLASSIFIER_PATH
+    from sklearn.model_selection import train_test_split
+    from torch.utils.data import DataLoader
+    from sklearn.metrics import classification_report
+    
+    def run_full_pipeline():
+        print("Cargando todos los datos...")
+        full_data = load_all_data(DATA_DIR, MASKS_DIR)
 
     train_data, temp_data = train_test_split(
         full_data, test_size=0.30, stratify=[d['label'] for d in full_data], random_state=42
@@ -164,23 +185,25 @@ def run_full_pipeline():
     print("\n--- Reporte de Clasificación Final (XGBoost sobre el conjunto completo de características) ---")
     print(classification_report(y_labels, y_pred_final, digits=4))
 
-if __name__ == "__main__":
-    run_full_pipeline()
-Puedes guardar este código como src/main_pipeline.py y ejecutarlo con python src/main_pipeline.py.
+    if __name__ == "__main__":
+        run_full_pipeline()
+    ```
+    Puedes guardar este código como `src/main_pipeline.py` y ejecutarlo con:
+    
+    ```
+    python src/main_pipeline.py
+    ```
 
-📂 Datos de Ejemplo
-Para facilitar el testing y la comprensión del proyecto, se incluyen pequeños conjuntos de datos de ejemplo en la carpeta data/:
+---
 
-data/raw_dicom_example/: Una estructura mínima de carpetas que simula un dataset DICOM real.
-data/registered_nifti_example/: MRIs de ejemplo que han pasado por la etapa de preprocesamiento y registro.
-data/segmentation_masks_template/: Máscaras de segmentación cerebrales de un atlas (ej. MNI) utilizadas como referencia para el registro espacial.
-📝 Licencia
-Este proyecto está distribuido bajo la licencia MIT License. Puedes encontrar los detalles completos en el archivo LICENSE.
+## 📂 Datos de ejemplo
+Para facilitar el testing y la comprensión del proyecto, se incluyen pequeños conjuntos de datos de ejemplo en la carpeta `data/`:
 
-🤝 Contribuciones
-¡Las contribuciones son bienvenidas! Si encuentras un error, tienes una sugerencia o quieres mejorar el código, por favor, abre un "issue" o envía un "pull request".
+* `data/raw_dicom_example/`: Una estructura mínima de carpetas que simula un dataset DICOM real.
+* `data/registered_nifti_example/`: MRIs de ejemplo que han pasado por la etapa de preprocesamiento y registro.
+* `data/segmentation_masks_template/`: Máscaras de segmentación cerebrales de un atlas (ej. MNI) utilizadas como referencia para el registro espacial.
 
-📞 Contacto
-Para cualquier pregunta o comentario, no dudes en contactar a [Tu Nombre/Usuario de GitHub, ej. xavipallas] a través de GitHub.
+---
 
-¡Esperamos que este proyecto sea una herramienta valiosa para el diagnóstico de enfermedades neurodegenerativas!
+## 📝 Licencia
+Este proyecto está distribuido bajo la MIT License. Puedes encontrar los detalles completos en el archivo `LICENSE`.
