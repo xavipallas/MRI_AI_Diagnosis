@@ -8,7 +8,7 @@ __pycache__/
 .pytest_cache/
 
 # Datos
-data/raw_dicom_example/       # Ignorar si es grande, si no, puedes quitar esta línea
+data/raw_dicom_example/
 data/registered_nifti_example/
 data/processed_segmentation_masks/
 data/transform_summary.json
