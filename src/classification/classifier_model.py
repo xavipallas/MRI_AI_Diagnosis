@@ -71,4 +71,7 @@ def load_xgboost_classifier() -> XGBClassifier:
     except FileNotFoundError:
         print(f"Error: Clasificador XGBoost no encontrado en {XGB_CLASSIFIER_PATH}. Asegúrate de haberlo entrenado y guardado.")
         raise
+    except Exception as e:
+        print(f"Error al cargar el Clasificador XGBoost: {e}")
+        raise
     return classifier

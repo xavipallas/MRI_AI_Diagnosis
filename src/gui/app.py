@@ -2,103 +2,44 @@
 import streamlit as st
 import nibabel as nib
 import numpy as np
-import os
 from pathlib import Path
+import os
 import pandas as pd
-import torch
-import tempfile # Para manejar archivos temporales
+import tempfile # Importar tempfile para manejar archivos temporales
+import sys
 
-from src.config import DEVICE, LABEL_MAP, REGIONS, UNET_MODEL_PATH, XGB_CLASSIFIER_PATH, IMAGE_SIZE
-from src.segmentation.unet_inference import load_unet_model, perform_unet_segmentation
-from src.classification.feature_extraction import extract_region_volumes, extract_shape_features, extract_texture_features
+# --- Configuración del entorno y rutas ---
+# Obtiene la ruta del directorio del script actual (src/gui)
+current_dir = Path(__file__).resolve().parent
+# Obtiene la ruta de la raíz del proyecto (la carpeta padre de 'src')
+# Si tu proyecto es ruta/a/MRI_AI_Diagnosis/src/gui/app.py
+# current_dir será ruta/a/MRI_AI_Diagnosis/src/gui
+# current_dir.parent será ruta/a/MRI_AI_Diagnosis/src
+# current_dir.parent.parent será ruta/a/MRI_AI_Diagnosis (la raíz del proyecto)
+project_root = current_dir.parent.parent 
+
+# Añade la raíz del proyecto al sys.path
+# Esto permite que Python encuentre el paquete 'src'
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
+from src.config import DEVICE, REGIONS, REGION_FULL_NAMES, IMAGE_SIZE, CLASS_LABELS
+from src.segmentation.unet_inference import load_unet_model, preprocess_mri, perform_segmentation
 from src.classification.classifier_model import load_xgboost_classifier
-from monai.transforms import (
-    Compose, EnsureChannelFirst, LoadImage, Resize, ScaleIntensity, ToTensor
-)
+from src.classification.feature_extraction import extract_region_volumes, extract_shape_features, extract_texture_features, get_feature_names
 
-# Mapping para el nombre completo de las regiones (para visualización de importancias)
-REGION_FULL_NAMES = {
-    "left_hippocampus": "Hipocampo Izquierdo",
-    "right_hippocampus": "Hipocampo Derecho",
-    "left_putamen": "Putamen Izquierdo",
-    "right_putamen": "Putamen Derecho"
-}
+# --- Configuración Global ---
 
-INFERENCE_TRANSFORMS_GUI = Compose([
-    LoadImage(image_only=True),
-    EnsureChannelFirst(),
-    ScaleIntensity(),
-    Resize(spatial_size=IMAGE_SIZE),
-    ToTensor()
-])
+# --- Funciones de Carga de Modelos ---
+@st.cache_resource # Cacha el modelo para que no se recargue en cada interacción de Streamlit
+def get_unet_model():
+    """Carga y cachea el modelo UNet."""
+    return load_unet_model()
 
-# Carga los modelos al inicio de la aplicación para que no se recarguen con cada interacción
-@st.cache_resource # Esto es importante para Streamlit y modelos grandes
-def cached_load_models():
-    unet_model = load_unet_model()
-    xgb_classifier = load_xgboost_classifier()
-    return unet, xgb_classifier
-
-unet_model, xgb_classifier = cached_load_models()
-
-# --- Funciones de Preprocesamiento y Segmentación ---
-def preprocess_mri(nifti_data: np.ndarray) -> torch.Tensor:
-    """
-    Aplica las transformaciones definidas a los datos NIfTI de una MRI.
-    Asegura que los datos estén en el formato correcto para el modelo UNet.
-
-    Args:
-        nifti_data (np.ndarray): Datos de la imagen MRI cargados de un archivo NIfTI.
-
-    Returns:
-        torch.Tensor: El tensor de la imagen MRI preprocesada, listo para la entrada al modelo.
-    """
-    # EnsureChannelFirst: añade la dimensión de canal (1, D, H, W)
-    # MONAI espera (C, D, H, W) para imágenes 3D
-    data_with_channel = np.expand_dims(nifti_data, axis=0) 
-
-    # ScaleIntensity: normaliza al rango [0, 1] o similar
-    min_val, max_val = data_with_channel.min(), data_with_channel.max()
-    if max_val - min_val > 0:
-        scaled_data = (data_with_channel - min_val) / (max_val - min_val)
-    else:
-        # Manejar el caso de una imagen constante para evitar división por cero
-        scaled_data = np.zeros_like(data_with_channel) 
-
-    # Convertir a tensor de PyTorch antes de Resize
-    input_tensor = torch.from_numpy(scaled_data).float()
-
-    # Resize: a (96, 96, 96)
-    # Asegurarse de que esta transformación se aplica a un tensor.
-    resized_tensor = Resize(spatial_size=(96, 96, 96))(input_tensor)
-
-    # ToTensor: ya es un tensor, por lo que este paso es esencialmente una no-operación aquí
-    return resized_tensor
-
-
-# --- Funciones de Extracción de Características ---
-def get_feature_names() -> list[str]:
-    """
-    Genera los nombres de las características en el orden en que son extraídas.
-    Necesario para interpretar la importancia de las características del XGBoost.
-
-    Returns:
-        list[str]: Una lista de cadenas con los nombres de las características.
-    """
-    feature_names = []
-    for region in REGIONS:
-        full_region_name = REGION_FULL_NAMES.get(region, region)
-        feature_names.append(f"{full_region_name} - Volumen")
-        feature_names.extend([
-            f"{full_region_name} - Área 2D",
-            f"{full_region_name} - Excentricidad",
-            f"{full_region_name} - Solidez"
-            f"{full_region_name} - Contraste",
-            f"{full_region_name} - Homogeneidad",
-            f"{full_region_name} - Energía",
-            f"{full_region_name} - Correlación"
-        ])
-    return feature_names
+@st.cache_resource # Cacha el clasificador para que no se recargue en cada interacción de Streamlit
+def get_xgboost_classifier():
+    """Carga y cachea el clasificador XGBoost."""
+    return load_xgboost_classifier()
 
 # --- Datos de referencia hipotéticos para la explicación clínica ---
 # Estos datos deberían ser obtenidos de un conjunto de datos de entrenamiento representativo
@@ -243,6 +184,10 @@ st.set_page_config(
 st.title("🧠 Herramienta de soporte al diagnóstico de RM Cerebral")
 st.markdown("---")
 
+# Cargar modelos una sola vez al inicio de la aplicación
+unet_model = get_unet_model()
+xgb_classifier = get_xgboost_classifier()
+
 FEATURE_NAMES = get_feature_names()
 
 # Sección para subir archivo en la barra lateral
@@ -253,7 +198,7 @@ with st.sidebar:
     )
 
 # Sección principal para visualización y resultados
-col1, col2 = st.columns([0.6, 0.4])
+col1, col2 = st.columns([0.5, 0.5])
 
 with col1:
     st.header("Visualización de la MRI")
@@ -352,7 +297,7 @@ with col1:
                     preprocessed_mri_tensor = preprocess_mri(mri_data_original)
 
                     # Realizar segmentación
-                    segmented_masks_tensor = perform_unet_segmentation(unet_model, preprocessed_mri_tensor)
+                    segmented_masks_tensor = perform_segmentation(unet_model, preprocessed_mri_tensor)
                     st.session_state['segmented_masks_tensor'] = segmented_masks_tensor # Almacenar máscaras segmentadas
 
                     # Extraer características
@@ -365,7 +310,7 @@ with col1:
                     # Clasificar con XGBoost
                     prediction_probs = xgb_classifier.predict_proba(extracted_features)[0]
                     predicted_class_idx = np.argmax(prediction_probs)
-                    predicted_label = LABEL_MAP[predicted_class_idx]
+                    predicted_label = CLASS_LABELS[predicted_class_idx]
 
                     # Guardar resultados en st.session_state para la explicación
                     st.session_state['predicted_label'] = predicted_label
@@ -382,7 +327,7 @@ with col1:
                 st.markdown(f"## **Diagnóstico Predicho para ID {current_patient_id}: <span style='color:green;'>{predicted_label}</span>**", unsafe_allow_html=True)
                 st.write("Probabilidades de clase:")
                 for i, prob in enumerate(prediction_probs):
-                    st.write(f"- {LABEL_MAP[i]}: {prob:.2%}")
+                    st.write(f"- {CLASS_LABELS[i]}: {prob:.2%}")
 
         except Exception as e:
             st.error(f"Se produjo un error al procesar el archivo: {e}")
@@ -447,7 +392,7 @@ with col2:
         El modelo ha clasificado esta resonancia magnética como **{predicted_label}** con las siguientes probabilidades:
         """)
         for i, prob in enumerate(prediction_probs):
-            st.write(f"- {LABEL_MAP[i]}: {prob:.2%}")
+            st.write(f"- {CLASS_LABELS[i]}: {prob:.2%}")
 
         st.markdown(f"""
         Esta clasificación se basa en el análisis de diversas características (volumen, forma y textura) extraídas de regiones cerebrales específicas.

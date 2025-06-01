@@ -20,6 +20,14 @@ REGIONS = [
     "right_putamen"
 ]
 
+# Mapping para el nombre completo de las regiones
+REGION_FULL_NAMES = {
+    "left_hippocampus": "Hipocampo Izquierdo",
+    "right_hippocampus": "Hipocampo Derecho",
+    "left_putamen": "Putamen Izquierdo",
+    "right_putamen": "Putamen Derecho"
+}
+
 # Rutas de modelos pre-entrenados (relativas a la raíz del proyecto)
 UNET_MODEL_PATH = Path("models/unet_multitask.pth")
 XGB_CLASSIFIER_PATH = Path("models/xgboost_classifier.joblib")
@@ -32,3 +40,6 @@ UNET_NUM_RES_UNITS = 2
 
 # Mapas de etiquetas para clasificación
 LABEL_MAP = {"Alzheimer": 0, "Parkinson": 1, "Control": 2}
+
+# Mapeo de etiquetas numéricas a nombres legibles
+CLASS_LABELS = {0: "Alzheimer", 1: "Parkinson", 2: "Control"}

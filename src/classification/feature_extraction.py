@@ -5,7 +5,7 @@ from skimage.measure import label, regionprops
 from skimage.feature import graycomatrix, graycoprops
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from src.config import DEVICE
+from src.config import DEVICE, REGIONS, REGION_FULL_NAMES
 from src.segmentation.unet_architecture import UNet
 from src.data_processing.data_loader import FeatureExtractionDataset
 
@@ -23,58 +23,80 @@ def extract_region_volumes(mask_tensor: torch.Tensor) -> list:
 
 def extract_shape_features(mask_tensor: torch.Tensor) -> list:
     """
-    Extrae características de forma 2D (área, excentricidad, solidez) de cada región
-    a partir de un corte axial central de la máscara.
+    Extrae características de forma (área 2D, excentricidad, solidez) de un corte axial central
+    de cada máscara segmentada.
 
     Args:
-        mask_tensor (torch.Tensor): Tensor de máscaras binarizadas.
+        mask_tensor (torch.Tensor): Tensor de las máscaras segmentadas
+                                     (num_regions, D, H, W).
 
     Returns:
-        list: Una lista concatenada de características de forma para todas las regiones.
-              Si una región no tiene propiedades, se añaden ceros.
+        list: Una lista aplanada de características de forma para todas las regiones.
     """
     features = []
     for i in range(mask_tensor.shape[0]):
-        img_np = (mask_tensor[i].numpy() > 0).astype(np.uint8)
+        # Asegurarse de que el tensor sea 3D para el slice y luego 2D para skimage
+        img_np = (mask_tensor[i].squeeze().numpy() > 0).astype(np.uint8) # Eliminar posibles dims extra y binarizar
+        
         # Se toma un corte axial central 2D para las características de forma.
-        slice_2d = img_np[img_np.shape[0] // 2]
+        if img_np.ndim == 3: # Si es 3D, toma el slice central
+            slice_2d = img_np[img_np.shape[0] // 2]
+        elif img_np.ndim == 2: # Si ya es 2D (ej. si el input original era solo un slice)
+            slice_2d = img_np
+        else: # No es 2D ni 3D
+            features.extend([0, 0, 0])
+            continue
+
         labeled = label(slice_2d)
         props = regionprops(labeled)
         if props:
-            # area en 2D
-            vol_2d = props[0].area
+            vol_2d = props[0].area # "area" en 2D para la rebanada
             eccentricity = props[0].eccentricity
             solidity = props[0].solidity
             features.extend([vol_2d, eccentricity, solidity])
         else:
-            features.extend([0, 0, 0])  # Si no se detectan propiedades, se añaden ceros
+            features.extend([0, 0, 0]) # Si no se detecta ninguna región, añadir ceros
     return features
 
 def extract_texture_features(mask_tensor: torch.Tensor) -> list:
     """
     Extrae características de textura (contraste, homogeneidad, energía, correlación)
-    utilizando GLCM (Gray-Level Co-occurrence Matrix) de cada región a partir de
-    un corte axial central de la máscara.
+    utilizando GLCM (Gray-Level Co-occurrence Matrix) de un corte axial central de cada máscara.
 
     Args:
-        mask_tensor (torch.Tensor): Tensor de máscaras binarizadas.
+        mask_tensor (torch.Tensor): Tensor de las máscaras segmentadas
+                                     (num_regions, D, H, W).
 
     Returns:
-        list: Una lista concatenada de características de textura para todas las regiones.
+        list: Una lista aplanada de características de textura para todas las regiones.
     """
     features = []
     for i in range(mask_tensor.shape[0]):
-        img_np = (mask_tensor[i].numpy() * 255).astype(np.uint8)
+        # Convertir a imagen de 8 bits para GLCM, asegurando que haya datos
+        img_np_original = mask_tensor[i].squeeze().numpy() # Eliminar posibles dims extra
+        # Normalizar a 0-255 si tiene valores flotantes y luego convertir a uint8
+        if img_np_original.max() > 0:
+            img_np = (img_np_original / img_np_original.max() * 255).astype(np.uint8)
+        else: # Si todos los valores son 0, la máscara está vacía
+            img_np = np.zeros_like(img_np_original, dtype=np.uint8)
+
         # GLCM requiere una imagen 2D, se usa el corte central axial.
-        slice_2d = img_np[img_np.shape[0] // 2]
-        if np.sum(slice_2d) == 0:  # Evitar error si la región está vacía
+        if img_np.ndim == 3: # Si es 3D, toma el slice central
+            slice_2d = img_np[img_np.shape[0] // 2]
+        elif img_np.ndim == 2: # Si ya es 2D
+            slice_2d = img_np
+        else: # No es 2D ni 3D
             features.extend([0, 0, 0, 0])
             continue
-        # Asegurarse de que slice_2d no esté vacío antes de calcular GLCM
-        if slice_2d.max() == slice_2d.min(): # Para evitar error en graycomatrix si todos los valores son iguales
-             glcm = np.zeros((256, 256, 1, 1))
-        else:
-            glcm = graycomatrix(slice_2d, distances=[1], angles=[0], levels=256, symmetric=True, normed=True)
+
+        if np.sum(slice_2d) == 0 or slice_2d.max() == slice_2d.min():
+            features.extend([0, 0, 0, 0]) # Si la región está vacía o es constante, no hay textura
+            continue
+        
+        # Convertir a int para graycomatrix si no lo es
+        slice_2d_int = slice_2d.astype(int)
+        
+        glcm = graycomatrix(slice_2d_int, distances=[1], angles=[0], levels=256, symmetric=True, normed=True)
         
         contrast = graycoprops(glcm, 'contrast')[0, 0]
         homogeneity = graycoprops(glcm, 'homogeneity')[0, 0]
@@ -82,6 +104,35 @@ def extract_texture_features(mask_tensor: torch.Tensor) -> list:
         correlation = graycoprops(glcm, 'correlation')[0, 0]
         features.extend([contrast, homogeneity, energy, correlation])
     return features
+
+def get_feature_names() -> list[str]:
+    """
+    Genera los nombres de las características en el orden en que son extraídas.
+    Necesario para interpretar la importancia de las características del XGBoost.
+
+    Returns:
+        list[str]: Una lista de cadenas con los nombres de las características.
+    """
+    feature_names = []
+    for region in REGIONS:
+        full_region_name = REGION_FULL_NAMES.get(region, region)
+        feature_names.append(f"{full_region_name} - Volumen")
+    for region in REGIONS:
+        full_region_name = REGION_FULL_NAMES.get(region, region)
+        feature_names.extend([
+            f"{full_region_name} - Área 2D",
+            f"{full_region_name} - Excentricidad",
+            f"{full_region_name} - Solidez"
+        ])
+    for region in REGIONS:
+        full_region_name = REGION_FULL_NAMES.get(region, region)
+        feature_names.extend([
+            f"{full_region_name} - Contraste",
+            f"{full_region_name} - Homogeneidad",
+            f"{full_region_name} - Energía",
+            f"{full_region_name} - Correlación"
+        ])
+    return feature_names
 
 def extract_features(model: UNet, dataset: FeatureExtractionDataset) -> tuple[np.ndarray, np.ndarray]:
     """
