@@ -15,7 +15,7 @@ INFERENCE_TRANSFORMS = Compose([
 ])
 
 def load_unet_model() -> UNet:
-        """
+    """
     Carga un modelo UNet pre-entrenado.
 
     Returns:
@@ -26,6 +26,7 @@ def load_unet_model() -> UNet:
         Exception: Para otros errores durante la carga del modelo.
     """
     model = build_unet_multitask(len(REGIONS), DEVICE)
+    
     try:
         model.load_state_dict(torch.load(UNET_MODEL_PATH, map_location=DEVICE))
         model.eval() # Poner el modelo en modo evaluación
