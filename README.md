@@ -37,7 +37,6 @@ MRI_AI_Diagnosis/
 ├── models/                       # Modelos entrenados
 │   ├── unet_multitask.pth        # Modelo UNet de segmentación
 │   └── xgboost_classifier.joblib # Clasificador XGBoost
-├── notebooks/                    # Cuadernos Jupyter para exploración, tutoriales y experimentación
 ├── src/                          # Código fuente modular del proyecto
 │   ├── config.py                 # Configuraciones globales y constantes
 │   ├── data_processing/          # Scripts para preprocesamiento y carga de datos
